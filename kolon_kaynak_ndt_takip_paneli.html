@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kolon-Kolon Kaynak & NDT Takip Sistemi (QA/QC)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#1e293b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .modal-backdrop {
+            background-color: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen pb-12">
+
+    <!-- Header -->
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-amber-500 p-2.5 rounded-xl text-slate-900 font-bold text-xl">
+                    <i class="fa-solid fa-hard-hat"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold leading-tight">Kolon-Kolon Kaynak & NDT Takip Sistemi</h1>
+                    <p class="text-xs text-slate-400">Şantiye Kalite Kontrol (QA/QC) ve Test Yönetim Paneli</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3 w-full md:w-auto justify-end">
+                <button onclick="exportToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-file-excel"></i> Excel / CSV İndir
+                </button>
+                <button onclick="openModal('add')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-md">
+                    <i class="fa-solid fa-plus"></i> Yeni Birleşim Ekle
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+
+        <!-- İstatistik Kartları -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <!-- Toplam -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Toplam Birleşim</p>
+                    <h3 class="text-2xl font-bold text-slate-800 mt-1" id="stat-total">0</h3>
+                    <p class="text-xs text-slate-400 mt-1">Kayıtlı kolon eki</p>
+                </div>
+                <div class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 text-xl">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+            </div>
+
+            <!-- Onaylandı -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-emerald-200 border-l-4 border-l-emerald-500 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-emerald-600">Onaylandı / Tamam</p>
+                    <h3 class="text-2xl font-bold text-emerald-700 mt-1" id="stat-passed">0</h3>
+                    <p class="text-xs text-emerald-600/70 mt-1">Tüm testlerden geçti</p>
+                </div>
+                <div class="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 text-xl">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+            </div>
+
+            <!-- Süreçte / Bekliyor -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-amber-200 border-l-4 border-l-amber-500 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-amber-600">Test / Kaynak Sürecinde</p>
+                    <h3 class="text-2xl font-bold text-amber-700 mt-1" id="stat-pending">0</h3>
+                    <p class="text-xs text-amber-600/70 mt-1">Eksik testler var</p>
+                </div>
+                <div class="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center text-amber-600 text-xl">
+                    <i class="fa-solid fa-spinner"></i>
+                </div>
+            </div>
+
+            <!-- Tamir / Ret -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-rose-200 border-l-4 border-l-rose-500 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-rose-600">Tamir / Ret</p>
+                    <h3 class="text-2xl font-bold text-rose-700 mt-1" id="stat-failed">0</h3>
+                    <p class="text-xs text-rose-600/70 mt-1">Testte kalan birleşim</p>
+                </div>
+                <div class="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center text-rose-600 text-xl">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filtreleme & Arama Çubuğu -->
+        <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
+            <div class="relative w-full md:w-80">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="searchInput" oninput="renderTable()" placeholder="Kolon no, aks, kot veya kaynakçı ara..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                <div class="flex items-center gap-2">
+                    <label for="statusFilter" class="text-xs font-semibold text-slate-500">Genel Durum:</label>
+                    <select id="statusFilter" onchange="renderTable()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <option value="ALL">Tümü</option>
+                        <option value="PASSED">Onaylandı (Tamam)</option>
+                        <option value="PENDING">Test/Kaynak Aşamasında</option>
+                        <option value="FAILED">Tamir / Ret</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <label for="vtFilter" class="text-xs font-semibold text-slate-500">VT Testi:</label>
+                    <select id="vtFilter" onchange="renderTable()" class="border border-slate-300 rounded-lg px-2.5 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <option value="ALL">Tümü</option>
+                        <option value="Yapılmadı">Yapılmadı</option>
+                        <option value="Geçti">Geçti</option>
+                        <option value="Kaldı">Kaldı</option>
+                    </select>
+                </div>
+
+                <button onclick="resetFilters()" class="text-slate-500 hover:text-slate-700 text-xs font-medium px-2 py-2 underline">
+                    Filtreleri Temizle
+                </button>
+            </div>
+        </section>
+
+        <!-- Tablo Kapsayıcısı -->
+        <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-slate-800 text-slate-200 font-semibold text-xs uppercase tracking-wider border-b border-slate-700">
+                            <th class="py-3.5 px-4">#</th>
+                            <th class="py-3.5 px-4">Kolon Birleşimi</th>
+                            <th class="py-3.5 px-4">Aks / Kat / Kot</th>
+                            <th class="py-3.5 px-4">Kaynakçı</th>
+                            <th class="py-3.5 px-4 text-center bg-slate-800/80 border-l border-slate-700">VT (Gözle)</th>
+                            <th class="py-3.5 px-4 text-center bg-slate-800/80">UT (Ultrasonik)</th>
+                            <th class="py-3.5 px-4 text-center bg-slate-800/80 border-r border-slate-700">MT / PT</th>
+                            <th class="py-3.5 px-4 text-center">Genel Durum</th>
+                            <th class="py-3.5 px-4 text-center">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody id="weldTableBody" class="divide-y divide-slate-200">
+                        <!-- Javascript ile dolacak -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="emptyState" class="hidden p-8 text-center text-slate-500">
+                <i class="fa-solid fa-inbox text-4xl mb-3 text-slate-300"></i>
+                <p class="text-base font-medium">Kayıt Bulunamadı</p>
+                <p class="text-xs text-slate-400 mt-1">Arama kriterlerinizi değiştirin veya yeni bir kolon ekleyin.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal (Ekle / Düzenle) -->
+    <div id="weldModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4 overflow-hidden transform transition-all">
+            <!-- Modal Header -->
+            <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold flex items-center gap-2" id="modalTitle">
+                    <i class="fa-solid fa-pen-to-square text-amber-500"></i> Birleşim Kaydı
+                </h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form -->
+            <form id="modalForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="editId">
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Alt Kolon No *</label>
+                        <input type="text" id="altKolon" required placeholder="Örn: K-01" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Üst Kolon No *</label>
+                        <input type="text" id="ustKolon" required placeholder="Örn: K-01A" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Aks / Kat / Kot *</label>
+                        <input type="text" id="aksKot" required placeholder="Örn: A-3 Aksı / 2. Kat" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Kaynakçı Kodu / Adı</label>
+                        <input type="text" id="kaynakci" placeholder="Örn: W-03 (Ahmet Y.)" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <hr class="border-slate-200 my-2">
+
+                <!-- NDT Testleri Bölümü -->
+                <div>
+                    <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                        <i class="fa-solid fa-microscope text-amber-600"></i> NDT / Tahribatsız Muayene Test Sonuçları
+                    </h4>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                        <!-- VT -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">VT (Gözle)</label>
+                            <select id="vtStatus" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                                <option value="Yapılmadı">Yapılmadı</option>
+                                <option value="Geçti">Geçti</option>
+                                <option value="Kaldı">Kaldı / Tamir</option>
+                            </select>
+                        </div>
+
+                        <!-- UT -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">UT (Ultrasonik)</label>
+                            <select id="utStatus" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                                <option value="Yapılmadı">Yapılmadı</option>
+                                <option value="Geçti">Geçti</option>
+                                <option value="Kaldı">Kaldı / Tamir</option>
+                            </select>
+                        </div>
+
+                        <!-- MT/PT -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">MT / PT (Manyetik/Penetrant)</label>
+                            <select id="mtStatus" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                                <option value="Yapılmadı">Yapılmadı</option>
+                                <option value="Geçti">Geçti</option>
+                                <option value="Kaldı">Kaldı / Tamir</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Açıklama / Notlar</label>
+                    <textarea id="notes" rows="2" placeholder="Örn: Yeniden kaynak yapıldı, rapor no: R-102" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+                </div>
+
+                <!-- Footer Buttons -->
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-200">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition font-medium">İptal</button>
+                    <button type="submit" class="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-lg text-sm font-bold transition">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Örnek Başlangıç Verileri
+        const defaultData = [
+            { id: '1', alt: 'K-01', ust: 'K-01A', aksKot: 'A-1 / Kat 1 (+4.20)', kaynakci: 'W-01 Ali', vt: 'Geçti', ut: 'Geçti', mt: 'Geçti', notes: 'Tüm testler uygun.' },
+            { id: '2', alt: 'K-02', ust: 'K-02A', aksKot: 'A-2 / Kat 1 (+4.20)', kaynakci: 'W-02 Veli', vt: 'Geçti', ut: 'Kaldı', mt: 'Geçti', notes: 'Nüfuziyet eksikliği saptandı.' },
+            { id: '3', alt: 'K-03', ust: 'K-03A', aksKot: 'B-1 / Kat 2 (+8.40)', kaynakci: 'W-01 Ali', vt: 'Geçti', ut: 'Yapılmadı', mt: 'Yapılmadı', notes: 'UT ve MT randevusu alındı.' }
+        ];
+
+        // Yerel Depolamadan (LocalStorage) verileri oku veya varsayılan yükle
+        let weldData = JSON.parse(localStorage.getItem('columnWeldData')) || defaultData;
+
+        // Sayfa Yüklendiğinde
+        document.addEventListener('DOMContentLoaded', () => {
+            renderTable();
+        });
+
+        // Verileri LocalStorage'a kaydet
+        function saveToStorage() {
+            localStorage.setItem('columnWeldData', JSON.stringify(weldData));
+        }
+
+        // Genel Durum Hesaplayıcı Logic
+        function calculateOverallStatus(vt, ut, mt) {
+            if (vt === 'Kaldı' || ut === 'Kaldı' || mt === 'Kaldı') {
+                return 'FAILED'; // Tamir Gerekiyor
+            }
+            if (vt === 'Geçti' && ut === 'Geçti' && mt === 'Geçti') {
+                return 'PASSED'; // Onaylandı
+            }
+            return 'PENDING'; // Test/Kaynak Aşamasında
+        }
+
+        // Tabloyu Çizme Fonksiyonu
+        function renderTable() {
+            const tbody = document.getElementById('weldTableBody');
+            const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const vtFilter = document.getElementById('vtFilter').value;
+
+            tbody.innerHTML = '';
+
+            let stats = { total: 0, passed: 0, pending: 0, failed: 0 };
+
+            const filteredData = weldData.filter(item => {
+                const overallStatus = calculateOverallStatus(item.vt, item.ut, item.mt);
+                
+                // İstatistikleri hesapla (filtre öncesi tüm verilerden)
+                stats.total++;
+                if (overallStatus === 'PASSED') stats.passed++;
+                else if (overallStatus === 'FAILED') stats.failed++;
+                else stats.pending++;
+
+                // Arama Filtresi
+                const matchesSearch = item.alt.toLowerCase().includes(searchVal) ||
+                                      item.ust.toLowerCase().includes(searchVal) ||
+                                      item.aksKot.toLowerCase().includes(searchVal) ||
+                                      (item.kaynakci && item.kaynakci.toLowerCase().includes(searchVal));
+
+                // Durum Filtresi
+                const matchesStatus = statusFilter === 'ALL' || overallStatus === statusFilter;
+                
+                // VT Filtresi
+                const matchesVT = vtFilter === 'ALL' || item.vt === vtFilter;
+
+                return matchesSearch && matchesStatus && matchesVT;
+            });
+
+            // İstatistik Kartlarını Güncelle
+            document.getElementById('stat-total').innerText = stats.total;
+            document.getElementById('stat-passed').innerText = stats.passed;
+            document.getElementById('stat-pending').innerText = stats.pending;
+            document.getElementById('stat-failed').innerText = stats.failed;
+
+            // Boş Durumu Göster/Gizle
+            const emptyState = document.getElementById('emptyState');
+            if (filteredData.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            // Tablo Satırlarını Oluştur
+            filteredData.forEach((item, index) => {
+                const overallStatus = calculateOverallStatus(item.vt, item.ut, item.mt);
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition border-b border-slate-200 text-slate-700";
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-mono text-xs text-slate-400">${index + 1}</td>
+                    <td class="py-3 px-4">
+                        <div class="font-bold text-slate-900">${item.alt} <i class="fa-solid fa-arrow-up text-slate-400 text-xs mx-0.5"></i> ${item.ust}</div>
+                        ${item.notes ? `<div class="text-xs text-slate-400 mt-0.5 max-w-xs truncate" title="${item.notes}"><i class="fa-regular fa-comment-dots"></i> ${item.notes}</div>` : ''}
+                    </td>
+                    <td class="py-3 px-4 text-xs font-medium text-slate-600">${item.aksKot}</td>
+                    <td class="py-3 px-4 text-xs">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">
+                            <i class="fa-solid fa-user-gear text-slate-400 text-[10px]"></i> ${item.kaynakci || 'Belirtilmedi'}
+                        </span>
+                    </td>
+                    <!-- VT Testi -->
+                    <td class="py-3 px-3 text-center border-l border-slate-100">
+                        ${renderTestDropdown(item.id, 'vt', item.vt)}
+                    </td>
+                    <!-- UT Testi -->
+                    <td class="py-3 px-3 text-center">
+                        ${renderTestDropdown(item.id, 'ut', item.ut)}
+                    </td>
+                    <!-- MT/PT Testi -->
+                    <td class="py-3 px-3 text-center border-r border-slate-100">
+                        ${renderTestDropdown(item.id, 'mt', item.mt)}
+                    </td>
+                    <!-- Genel Durum -->
+                    <td class="py-3 px-4 text-center">
+                        ${renderOverallBadge(overallStatus)}
+                    </td>
+                    <!-- İşlemler -->
+                    <td class="py-3 px-4 text-center">
+                        <div class="flex items-center justify-center space-x-2">
+                            <button onclick="openModal('edit', '${item.id}')" class="text-slate-500 hover:text-amber-600 p-1.5 rounded hover:bg-amber-50 transition" title="Düzenle">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button onclick="deleteItem('${item.id}')" class="text-slate-500 hover:text-rose-600 p-1.5 rounded hover:bg-rose-50 transition" title="Sil">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Tablo İçi Hızlı Test Durumu Seçimi HTML'i
+        function renderTestDropdown(id, testType, value) {
+            let colorClass = "bg-slate-100 text-slate-600 border-slate-200";
+            if (value === 'Geçti') colorClass = "bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold";
+            if (value === 'Kaldı') colorClass = "bg-rose-100 text-rose-800 border-rose-300 font-bold";
+
+            return `
+                <select onchange="updateQuickTestStatus('${id}', '${testType}', this.value)" 
+                        class="text-xs px-2 py-1 rounded-md border ${colorClass} focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer">
+                    <option value="Yapılmadı" ${value === 'Yapılmadı' ? 'selected' : ''}>— Yapılmadı</option>
+                    <option value="Geçti" ${value === 'Geçti' ? 'selected' : ''}>✓ Geçti</option>
+                    <option value="Kaldı" ${value === 'Kaldı' ? 'selected' : ''}>✗ Kaldı</option>
+                </select>
+            `;
+        }
+
+        // Genel Durum Rozeti
+        function renderOverallBadge(status) {
+            if (status === 'PASSED') {
+                return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    <i class="fa-solid fa-check text-[10px]"></i> Onaylandı
+                </span>`;
+            } else if (status === 'FAILED') {
+                return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200 animate-pulse">
+                    <i class="fa-solid fa-triangle-exclamation text-[10px]"></i> Tamir Gerekli
+                </span>`;
+            } else {
+                return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                    <i class="fa-solid fa-clock text-[10px]"></i> Test Aşamalarında
+                </span>`;
+            }
+        }
+
+        // Tablo İçi Hızlı Güncelleme
+        function updateQuickTestStatus(id, testType, newValue) {
+            const item = weldData.find(d => d.id === id);
+            if (item) {
+                item[testType] = newValue;
+                saveToStorage();
+                renderTable();
+            }
+        }
+
+        // Modal Açma (Ekle / Düzenle)
+        function openModal(mode, id = null) {
+            const modal = document.getElementById('weldModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const form = document.getElementById('modalForm');
+
+            form.reset();
+
+            if (mode === 'edit' && id) {
+                const item = weldData.find(d => d.id === id);
+                if (item) {
+                    document.getElementById('editId').value = item.id;
+                    document.getElementById('altKolon').value = item.alt;
+                    document.getElementById('ustKolon').value = item.ust;
+                    document.getElementById('aksKot').value = item.aksKot;
+                    document.getElementById('kaynakci').value = item.kaynakci || '';
+                    document.getElementById('vtStatus').value = item.vt;
+                    document.getElementById('utStatus').value = item.ut;
+                    document.getElementById('mtStatus').value = item.mt;
+                    document.getElementById('notes').value = item.notes || '';
+                    
+                    modalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-amber-500"></i> Birleşim Kaydını Düzenle`;
+                }
+            } else {
+                document.getElementById('editId').value = '';
+                modalTitle.innerHTML = `<i class="fa-solid fa-plus text-amber-500"></i> Yeni Kolon Birleşimi Ekle`;
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('weldModal').classList.add('hidden');
+        }
+
+        // Form Gönderme İşlemi
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const editId = document.getElementById('editId').value;
+            const itemData = {
+                alt: document.getElementById('altKolon').value.trim(),
+                ust: document.getElementById('ustKolon').value.trim(),
+                aksKot: document.getElementById('aksKot').value.trim(),
+                kaynakci: document.getElementById('kaynakci').value.trim(),
+                vt: document.getElementById('vtStatus').value,
+                ut: document.getElementById('utStatus').value,
+                mt: document.getElementById('mtStatus').value,
+                notes: document.getElementById('notes').value.trim()
+            };
+
+            if (editId) {
+                // Güncelleme
+                const index = weldData.findIndex(d => d.id === editId);
+                if (index !== -1) {
+                    weldData[index] = { id: editId, ...itemData };
+                }
+            } else {
+                // Yeni Ekleme
+                weldData.unshift({
+                    id: Date.now().toString(),
+                    ...itemData
+                });
+            }
+
+            saveToStorage();
+            renderTable();
+            closeModal();
+        }
+
+        // Silme İşlemi
+        function deleteItem(id) {
+            if (confirm("Bu kolon birleşim kaydını silmek istediğinize emin misiniz?")) {
+                weldData = weldData.filter(d => d.id !== id);
+                saveToStorage();
+                renderTable();
+            }
+        }
+
+        // Filtreleri Sıfırla
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilter').value = 'ALL';
+            document.getElementById('vtFilter').value = 'ALL';
+            renderTable();
+        }
+
+        // Excel / CSV Aktarımı
+        function exportToCSV() {
+            if (weldData.length === 0) {
+                alert("Dışa aktarılacak veri bulunamadı.");
+                return;
+            }
+
+            let csvContent = "\uFEFF"; // UTF-8 BOM for Excel Turkish chars
+            csvContent += "Alt Kolon;Üst Kolon;Aks / Kat / Kot;Kaynakci;VT Testi;UT Testi;MT/PT Testi;Genel Durum;Notlar\n";
+
+            weldData.forEach(item => {
+                const status = calculateOverallStatus(item.vt, item.ut, item.mt);
+                let statusTxt = "Test Aşamalarında";
+                if(status === 'PASSED') statusTxt = "Onaylandı";
+                if(status === 'FAILED') statusTxt = "Tamir Gerekiyor";
+
+                csvContent += `"${item.alt}";"${item.ust}";"${item.aksKot}";"${item.kaynakci || ''}";"${item.vt}";"${item.ut}";"${item.mt}";"${statusTxt}";"${item.notes || ''}"\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `kolon_kaynak_ndt_takip_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
